@@ -31,6 +31,10 @@ var currentlyActivePage = {
 	url: null,
 	tabID: null,
 	openedTime: new Date(),
+	process: function(activeInfo){		
+		currentlyActivePage.setClosed();
+		currentlyActivePage.setOpen(activeInfo);
+	},
 	setOpen: function(activeInfo){
 		currentlyActivePage.tabID = activeInfo.tabId;
 		chrome.tabs.get(activeInfo.tabId, function(tab){
@@ -49,19 +53,19 @@ var currentlyActivePage = {
 		}
 		
 		var closedTime = new Date();
-		var timeSpentOnPage = closedTime-openedTime;
+		var timeSpentOnPage = closedTime-openedTime-timeInactiveOnTab;
+		timeInactiveOnTab = 0;
 		listOfTimeSpentOnEachPage.increaseTime(currentlyActivePage.url, timeSpentOnPage);
 		
-		chrome.storage.local.set({listOfTimeSpentOnEachPage: listOfTimeSpentOnEachPage}, function() {});
-		
 		console.log("Exited page " + currentlyActivePage.url + " \n spent " + formatTimeDiff(timeSpentOnPage) + " on page.");
+		
+		chrome.storage.local.set({listOfTimeSpentOnEachPage: listOfTimeSpentOnEachPage}, function() {});
 	}
 };
 
 chrome.tabs.onActivated.addListener(function(activeInfo) {
 	displayStatsIfNewDay();
-	currentlyActivePage.setClosed();
-	currentlyActivePage.setOpen(activeInfo);
+	currentlyActivePage.process(activeInfo);
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
@@ -69,6 +73,36 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
 		currentlyActivePage.setClosed();
 		currentlyActivePage.setOpen({tabId: tabId});
 	}
+});
+var prevState = "active";
+var newState = "active";
+var lastTimeWasActive;
+var timeInactiveOnTab = 0;
+chrome.idle.onStateChanged.addListener(function(newStateEnum){
+	prevState = newState;
+	newState = newStateEnum;
+	
+	chrome.storage.local.get(['badList'], function(result){
+		var badList = [];
+		if('badList' in result && Array.isArray(badList)){
+			badList = result.badList;
+		}
+
+		if(badList.indexOf(currentlyActivePage.url) != -1){
+			console.log("Inactivity denied on bad pages.");
+			return;
+		}
+		
+		if(prevState == "active" && newState != "active"){
+			lastTimeWasActive = new Date().getTime();
+			console.log("Gone inactive.");
+		}
+		
+		if(prevState != "active" && newState == "active"){
+			timeInactiveOnTab += new Date().getTime() - lastTimeWasActive;
+			console.log("Back from inactivity! Was away for " + formatTimeDiff(timeInactiveOnTab));
+		}
+	});
 });
 function displayStatsIfNewDay(){
 	chrome.storage.local.get(['lastTimeUpdated'], function(result){

@@ -16,6 +16,7 @@
 		"background",
 		"tabs",
 		"activeTab",
-		"storage"
+		"storage",
+		"idle"
 	]
 }
