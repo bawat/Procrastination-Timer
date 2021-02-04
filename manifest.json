@@ -1,0 +1,21 @@
+{
+	"manifest_version": 2,
+	"name": "Procrastination Timer",
+	"version": "1.0",
+	
+	"background": {
+		"persistent": false,
+		"scripts": ["background_script.js"]
+	},
+	"browser_action": {
+		"default_title": "Records how long you've spent on different domains to help you realise where your time is going.",
+		"default_icon": "icon.png",
+		"default_popup": "popup.html"
+	},
+	"permissions": [
+		"background",
+		"tabs",
+		"activeTab",
+		"storage"
+	]
+}
