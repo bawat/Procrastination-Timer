@@ -32,8 +32,10 @@ var currentlyActivePage = {
 	tabID: null,
 	openedTime: new Date(),
 	process: function(activeInfo){		
-		currentlyActivePage.setClosed();
-		currentlyActivePage.setOpen(activeInfo);
+		processInactivity("active", function(){			
+			currentlyActivePage.setClosed();
+			currentlyActivePage.setOpen(activeInfo);
+		});
 	},
 	setOpen: function(activeInfo){
 		currentlyActivePage.tabID = activeInfo.tabId;
@@ -57,7 +59,7 @@ var currentlyActivePage = {
 		timeInactiveOnTab = 0;
 		listOfTimeSpentOnEachPage.increaseTime(currentlyActivePage.url, timeSpentOnPage);
 		
-		console.log("Exited page " + currentlyActivePage.url + " \n spent " + formatTimeDiff(timeSpentOnPage) + " on page.");
+		console.log("Exited page " + currentlyActivePage.url + " spent " + formatTimeDiff(timeSpentOnPage) + " on page.");
 		
 		chrome.storage.local.set({listOfTimeSpentOnEachPage: listOfTimeSpentOnEachPage}, function() {});
 	}
@@ -70,15 +72,15 @@ chrome.tabs.onActivated.addListener(function(activeInfo) {
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
 	if(currentlyActivePage.tabID == tabId && 'url' in changeInfo){
-		currentlyActivePage.setClosed();
-		currentlyActivePage.setOpen({tabId: tabId});
+		currentlyActivePage.process({tabId: tabId});
 	}
 });
 var prevState = "active";
 var newState = "active";
 var lastTimeWasActive;
 var timeInactiveOnTab = 0;
-chrome.idle.onStateChanged.addListener(function(newStateEnum){
+chrome.idle.onStateChanged.addListener(processInactivity);
+function processInactivity(newStateEnum, callback){
 	prevState = newState;
 	newState = newStateEnum;
 	
@@ -90,6 +92,7 @@ chrome.idle.onStateChanged.addListener(function(newStateEnum){
 
 		if(badList.indexOf(currentlyActivePage.url) != -1){
 			console.log("Inactivity denied on bad pages.");
+			runIfDefined(callback);
 			return;
 		}
 		
@@ -102,8 +105,14 @@ chrome.idle.onStateChanged.addListener(function(newStateEnum){
 			timeInactiveOnTab += new Date().getTime() - lastTimeWasActive;
 			console.log("Back from inactivity! Was away for " + formatTimeDiff(timeInactiveOnTab));
 		}
+		runIfDefined(callback);
 	});
-});
+}
+function runIfDefined(callback){
+	if(callback && typeof callback === "function"){
+		callback();
+	}
+}
 function displayStatsIfNewDay(){
 	chrome.storage.local.get(['lastTimeUpdated'], function(result){
 		if('lastTimeUpdated' in result){
