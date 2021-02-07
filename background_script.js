@@ -55,8 +55,9 @@ var currentlyActivePage = {
 		}
 		
 		var closedTime = new Date();
-		var timeSpentOnPage = closedTime-openedTime-timeInactiveOnTab;
+		var timeSpentOnPage = closedTime-openedTime-timeInactiveOnTab-cumulativeScreenShutTime;
 		timeInactiveOnTab = 0;
+		cumulativeScreenShutTime = 0;
 		listOfTimeSpentOnEachPage.increaseTime(currentlyActivePage.url, timeSpentOnPage);
 		
 		console.log("Exited page " + currentlyActivePage.url + " spent " + formatTimeDiff(timeSpentOnPage) + " on page.");
@@ -75,6 +76,20 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
 		currentlyActivePage.process({tabId: tabId});
 	}
 });
+
+//Detect sleep/laptop screen close
+var lastTimeIterated = new Date();
+var screenCloseCheckInterval = 500;
+var cumulativeScreenShutTime = 0;
+setInterval(function(){
+	var timeScreenShutFor = new Date() - lastTimeIterated - screenCloseCheckInterval;
+	if(timeScreenShutFor > 10){
+		console.log("Screen was shut for " + formatTimeDiff(timeScreenShutFor));
+		cumulativeScreenShutTime += timeScreenShutFor;
+	}
+	lastTimeIterated = new Date();
+}, screenCloseCheckInterval);
+
 var prevState = "active";
 var newState = "active";
 var lastTimeWasActive;
