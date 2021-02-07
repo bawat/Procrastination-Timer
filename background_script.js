@@ -83,7 +83,7 @@ var screenCloseCheckInterval = 500;
 var cumulativeScreenShutTime = 0;
 setInterval(function(){
 	var timeScreenShutFor = new Date() - lastTimeIterated - screenCloseCheckInterval;
-	if(timeScreenShutFor > 10){
+	if(timeScreenShutFor > 10 && newState == "active"){
 		console.log("Screen was shut for " + formatTimeDiff(timeScreenShutFor));
 		cumulativeScreenShutTime += timeScreenShutFor;
 	}
